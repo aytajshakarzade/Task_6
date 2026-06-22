@@ -336,6 +336,10 @@ namespace Task_6.Controllers
                          created_at = a.Created_At,
                          read_time_minutes = a.Read_Time_Minutes,
 
+                         is_trending = a.Is_Trending,
+                         is_breaking = a.Is_Breaking,
+                         is_live = a.Is_Live,
+
                          category = new
                          {
                              id = c.Id,
@@ -347,7 +351,10 @@ namespace Task_6.Controllers
                          author = new
                          {
                              id = au.Id,
-                             name = au.Name
+                             name = au.Name,
+                             avatar_url = au.Avatar_Url,
+                             bio = au.Bio,
+                             twitter_handle = au.Twitter_Handle
                          },
 
                          stats = new
@@ -384,8 +391,90 @@ namespace Task_6.Controllers
                     success = false,
                     message = ex.Message,
                     data = (object)null
-                });dotnet ru
+                });
+            }
+        }
+        [HttpGet("{id}")]
+        public IActionResult InvalidId(string id)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = "Id must be numeric",
+                data = (object)null
+            });
+        }
+        [HttpGet("{id:int}/related")]
+        public IActionResult GetRelated(
+    int id,
+    int limit = 5)
+        {
+            try
+            {
+                var currentArticle =
+                    _context.Articles
+                    .FirstOrDefault(x => x.Id == id);
+
+                if (currentArticle == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = "Article not found",
+                        data = (object)null
+                    });
+                }
+
+                var related =
+                    (from a in _context.Articles
+                     join c in _context.Categories
+                        on a.Category_Id equals c.Id
+                     join s in _context.ArticleStats
+                        on a.Id equals s.Article_Id
+                     where a.Category_Id == currentArticle.Category_Id
+                           && a.Id != id
+                     orderby a.Created_At descending
+                     select new
+                     {
+                         id = a.Id,
+                         title = a.Title,
+                         short_description = a.Short_Description,
+                         image_url = a.Image_Url,
+
+                         category = new
+                         {
+                             id = c.Id,
+                             name = c.Name,
+                             badge_color = c.Badge_Color
+                         },
+
+                         stats = new
+                         {
+                             likes_count = s.Likes_Count,
+                             shares_count = s.Shares_Count,
+                             bookmarks_count = s.Bookmarks_Count
+                         }
+                     })
+                    .Take(limit)
+                    .ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "OK",
+                    data = related
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message,
+                    data = (object)null
+                });
+
             }
         }
     }
-}
+};
